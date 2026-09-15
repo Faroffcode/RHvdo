@@ -1,0 +1,149 @@
+name: Release RHvdo
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "Release version (for example 1.0.0)"
+        required: true
+        type: string
+      version_code:
+        description: "Android versionCode (must be greater than the previous release)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ inputs.version_name }}"
+          VERSION_CODE="${{ inputs.version_code }}"
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version_name must be SemVer in X.Y.Z form."
+            exit 1
+          fi
+
+          if [[ ! "$VERSION_CODE" =~ ^[0-9]+$ ]] || (( VERSION_CODE < 1 )); then
+            echo "::error::version_code must be a positive integer."
+            exit 1
+          fi
+
+          echo "VERSION_NAME=$VERSION" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Ensure release tag does not already exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION_NAME}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists."
+            exit 1
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+
+      - name: Decode release keystore
+        uses: timheuer/base64-to-file@v2
+        id: keystore
+        with:
+          fileName: rhvdo-release.jks
+          encodedString: ${{ secrets.KEYSTORE }}
+
+      - name: Build signed release APKs and AAB
+        shell: bash
+        env:
+          KEYSTORE: ${{ steps.keystore.outputs.filePath }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          ./gradlew clean assembleRelease bundleRelease \
+            -PversionName="$VERSION_NAME" \
+            -PversionCode="$VERSION_CODE" \
+            -Pandroid.injected.signing.store.file="$KEYSTORE" \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+
+      - name: Verify APK identity and version
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-universal-release.apk"
+          test -f "$APK"
+
+          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apkanalyzer" \
+            manifest application-id "$APK" | grep -Fx "io.github.faroffcode.rhvdo"
+
+          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apkanalyzer" \
+            manifest version-name "$APK" | grep -Fx "$VERSION_NAME"
+
+          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apkanalyzer" \
+            manifest version-code "$APK" | grep -Fx "$VERSION_CODE"
+
+      - name: Rename release artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="app/build/outputs/apk/release"
+
+          for ABI in arm64-v8a armeabi-v7a universal x86 x86_64; do
+            SRC="$OUT/app-${ABI}-release.apk"
+            if [[ -f "$SRC" ]]; then
+              mv "$SRC" "$OUT/RHvdo-v${VERSION_NAME}-${ABI}.apk"
+            fi
+          done
+
+          mv "app/build/outputs/bundle/release/app-release.aab" \
+             "app/build/outputs/bundle/release/RHvdo-v${VERSION_NAME}.aab"
+
+          cd "$OUT"
+          sha256sum RHvdo-v"${VERSION_NAME}"-*.apk > SHA256SUMS
+          cd -
+
+          sha256sum "app/build/outputs/bundle/release/RHvdo-v${VERSION_NAME}.aab" >> "$OUT/SHA256SUMS"
+
+      - name: Create Git tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${VERSION_NAME}" -m "RHvdo v${VERSION_NAME}"
+          git push origin "v${VERSION_NAME}"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: "v${{ env.VERSION_NAME }}"
+          name: "RHvdo v${{ env.VERSION_NAME }}"
+          generate_release_notes: true
+          files: |
+            app/build/outputs/apk/release/RHvdo-v${{ env.VERSION_NAME }}-*.apk
+            app/build/outputs/apk/release/SHA256SUMS
+            app/build/outputs/bundle/release/RHvdo-v${{ env.VERSION_NAME }}.aab
