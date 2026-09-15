@@ -28,6 +28,11 @@ jobs:
           validate-wrappers: true
           gradle-home-cache-cleanup: true
 
+      # Ensure the Gradle wrapper is executable even if Git checkout does not
+      # preserve the executable bit in the repository.
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
       - name: Build Project with gradle
         run: ./gradlew assembleDebug
 
