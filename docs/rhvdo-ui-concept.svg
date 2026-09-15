@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1214 1295" role="img" aria-labelledby="title desc">
+<title id="title">RHvdo UI concept</title>
+<desc id="desc">Modern dark-mode RHvdo library, network and settings interface concept.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1020"/><stop offset="1" stop-color="#17182a"/></linearGradient>
+  <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7048ff"/><stop offset="1" stop-color="#3d7cff"/></linearGradient>
+  <filter id="shadow"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-opacity=".25"/></filter>
+</defs>
+<rect width="1214" height="1295" rx="28" fill="#080b14"/>
+<!-- Library -->
+<g transform="translate(0 0)">
+ <rect x="18" y="18" width="570" height="650" rx="24" fill="url(#bg)" stroke="#242b40"/>
+ <rect x="18" y="18" width="570" height="86" rx="24" fill="#12172a"/>
+ <path d="M92 54h24l10 12h-34z" fill="#7048ff"/><path d="M92 66h34v22H92z" fill="#3d7cff"/>
+ <text x="140" y="80" fill="#f5f7ff" font-family="sans-serif" font-size="28" font-weight="700">RHvdo</text>
+ <text x="520" y="80" fill="#dbe1f5" font-family="sans-serif" font-size="26">⌕</text><text x="548" y="80" fill="#dbe1f5" font-family="sans-serif" font-size="24">⚙</text>
+ <text x="62" y="142" fill="#fff" font-family="sans-serif" font-size="24" font-weight="700">Local Library</text>
+ <text x="62" y="168" fill="#9da7c2" font-family="sans-serif" font-size="14">Browse your videos and folders</text>
+ <g filter="url(#shadow)">
+  <rect x="52" y="190" width="502" height="88" rx="16" fill="#111a31" stroke="#202b47"/><rect x="52" y="290" width="502" height="88" rx="16" fill="#111a31" stroke="#202b47"/><rect x="52" y="390" width="502" height="88" rx="16" fill="#111a31" stroke="#202b47"/><rect x="52" y="490" width="502" height="88" rx="16" fill="#111a31" stroke="#202b47"/>
+ </g>
+ <g fill="#315bbd"><rect x="72" y="214" width="58" height="46" rx="9"/><rect x="72" y="314" width="58" height="46" rx="9"/><rect x="72" y="414" width="58" height="46" rx="9"/><rect x="72" y="514" width="58" height="46" rx="9"/></g>
+ <g fill="#f1f4ff" font-family="sans-serif" font-size="17" font-weight="600"><text x="150" y="224">Download</text><text x="150" y="324">ScreenRecorder</text><text x="150" y="424">WhatsApp Animated Gifs</text><text x="150" y="524">WhatsApp Video</text></g>
+ <g fill="#8e9ab8" font-family="sans-serif" font-size="12"><text x="150" y="246">/storage/emulated/0</text><text x="150" y="346">/storage/emulated/0/DCIM</text><text x="150" y="446">/storage/emulated/999/Android/media</text><text x="150" y="546">/storage/emulated/999/Android/media</text></g>
+ <g fill="#dce4ff" font-family="sans-serif" font-size="11"><rect x="150" y="254" width="58" height="18" rx="9" fill="#263d72"/><text x="162" y="267">5 Videos</text><rect x="150" y="354" width="58" height="18" rx="9" fill="#263d72"/><text x="162" y="367">2 Videos</text><rect x="150" y="454" width="58" height="18" rx="9" fill="#263d72"/><text x="162" y="467">1 Video</text><rect x="150" y="554" width="58" height="18" rx="9" fill="#263d72"/><text x="162" y="567">2 Videos</text></g>
+ <circle cx="516" cy="604" r="27" fill="url(#accent)"/><text x="507" y="613" fill="white" font-size="24">▶</text>
+</g>
+<!-- Network -->
+<g transform="translate(608 0)">
+ <rect x="18" y="18" width="588" height="650" rx="24" fill="url(#bg)" stroke="#242b40"/>
+ <text x="52" y="78" fill="#dbe1f5" font-family="sans-serif" font-size="30">‹</text><text x="94" y="80" fill="#fff" font-family="sans-serif" font-size="28" font-weight="700">Network</text><text x="546" y="80" fill="#dbe1f5" font-family="sans-serif" font-size="24">⚙</text>
+ <rect x="48" y="116" width="528" height="230" rx="20" fill="#111a31" stroke="#26385f"/>
+ <circle cx="88" cy="156" r="24" fill="#2b4279"/><text x="77" y="165" fill="white" font-size="22">◎</text>
+ <text x="128" y="160" fill="#fff" font-family="sans-serif" font-size="18" font-weight="700">Network Stream</text><text x="128" y="184" fill="#9da7c2" font-family="sans-serif" font-size="13">Enter a network URL:</text>
+ <rect x="68" y="202" width="488" height="56" rx="8" fill="#0c101b" stroke="#8090b5"/><text x="86" y="237" fill="#d9e0f3" font-family="sans-serif" font-size="14">http://example.com/example.mp4</text>
+ <rect x="336" y="278" width="220" height="42" rx="21" fill="url(#accent)"/><text x="360" y="304" fill="white" font-family="sans-serif" font-size="13" font-weight="600">▶  Open network stream</text>
+ <circle cx="312" cy="440" r="30" fill="#25365f"/><text x="298" y="450" fill="white" font-size="24">☷</text><circle cx="345" cy="462" r="14" fill="#7048ff"/><text x="339" y="469" fill="white" font-size="17">+</text>
+ <text x="242" y="502" fill="#fff" font-family="sans-serif" font-size="19" font-weight="700">No connections yet</text><text x="178" y="528" fill="#9da7c2" font-family="sans-serif" font-size="13">Add an SMB, FTP, SFTP or WebDAV connection</text><text x="222" y="548" fill="#9da7c2" font-family="sans-serif" font-size="13">to browse and play videos from your network.</text>
+ <circle cx="536" cy="604" r="27" fill="url(#accent)"/><text x="526" y="613" fill="white" font-size="25">+</text>
+</g>
+<!-- Settings -->
+<g transform="translate(0 690)">
+ <rect x="18" y="18" width="1180" height="580" rx="24" fill="url(#bg)" stroke="#242b40"/>
+ <text x="52" y="78" fill="#dbe1f5" font-family="sans-serif" font-size="30">‹</text><text x="100" y="80" fill="#fff" font-family="sans-serif" font-size="28" font-weight="700">Settings</text>
+ <g font-family="sans-serif">
+  <g fill="#111a31" stroke="#202b47"><rect x="52" y="112" width="530" height="82" rx="16"/><rect x="614" y="112" width="530" height="82" rx="16"/><rect x="52" y="208" width="530" height="82" rx="16"/><rect x="614" y="208" width="530" height="82" rx="16"/><rect x="52" y="304" width="530" height="82" rx="16"/><rect x="614" y="304" width="530" height="82" rx="16"/><rect x="52" y="400" width="530" height="82" rx="16"/><rect x="614" y="400" width="530" height="82" rx="16"/></g>
+  <g fill="#2b4279"><circle cx="92" cy="153" r="25"/><circle cx="654" cy="153" r="25"/><circle cx="92" cy="249" r="25"/><circle cx="654" cy="249" r="25"/><circle cx="92" cy="345" r="25"/><circle cx="654" cy="345" r="25"/><circle cx="92" cy="441" r="25"/><circle cx="654" cy="441" r="25"/></g>
+  <g fill="#fff" font-size="17" font-weight="700"><text x="132" y="149">Appearance</text><text x="694" y="149">Media library</text><text x="132" y="245">Player</text><text x="694" y="245">Gestures</text><text x="132" y="341">Audio</text><text x="694" y="341">Subtitle</text><text x="132" y="437">General</text><text x="694" y="437">About</text></g>
+  <g fill="#9da7c2" font-size="12"><text x="132" y="170">Adjust the app to your liking</text><text x="694" y="170">Scan and manage media library</text><text x="132" y="266">Player appearance, playback controls</text><text x="694" y="266">Configure player touch gestures</text><text x="132" y="362">Audio playback options</text><text x="694" y="362">Subtitle appearance, playback options</text><text x="132" y="458">User data options</text><text x="694" y="458">Version, support, credits</text></g>
+ </g>
+</g>
+</svg>
