@@ -66,6 +66,12 @@ jobs:
         with:
           validate-wrappers: true
 
+      # GitHub checkout may not preserve the executable bit on gradlew.
+      # Always normalize it before invoking Gradle.
+      - name: Make Gradle wrapper executable
+        shell: bash
+        run: chmod +x ./gradlew
+
       - name: Decode release keystore
         uses: timheuer/base64-to-file@v2
         id: keystore
