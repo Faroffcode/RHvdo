@@ -66,8 +66,6 @@ jobs:
         with:
           validate-wrappers: true
 
-      # GitHub checkout may not preserve the executable bit on gradlew.
-      # Always normalize it before invoking Gradle.
       - name: Make Gradle wrapper executable
         shell: bash
         run: chmod +x ./gradlew
@@ -103,14 +101,34 @@ jobs:
           APK="app/build/outputs/apk/release/app-universal-release.apk"
           test -f "$APK"
 
-          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apkanalyzer" \
-            manifest application-id "$APK" | grep -Fx "io.github.faroffcode.rhvdo"
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          APKANALYZER="$BUILD_TOOLS/apkanalyzer"
 
-          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apkanalyzer" \
-            manifest version-name "$APK" | grep -Fx "$VERSION_NAME"
+          ACTUAL_APPLICATION_ID="$("$APKANALYZER" manifest application-id "$APK" | tr -d '\r' | xargs)"
+          ACTUAL_VERSION_NAME="$("$APKANALYZER" manifest version-name "$APK" | tr -d '\r' | xargs)"
+          ACTUAL_VERSION_CODE="$("$APKANALYZER" manifest version-code "$APK" | tr -d '\r' | xargs)"
 
-          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/apkanalyzer" \
-            manifest version-code "$APK" | grep -Fx "$VERSION_CODE"
+          echo "APK applicationId: $ACTUAL_APPLICATION_ID"
+          echo "Expected applicationId: io.github.faroffcode.rhvdo"
+          echo "APK versionName: $ACTUAL_VERSION_NAME"
+          echo "Expected versionName: $VERSION_NAME"
+          echo "APK versionCode: $ACTUAL_VERSION_CODE"
+          echo "Expected versionCode: $VERSION_CODE"
+
+          if [[ "$ACTUAL_APPLICATION_ID" != "io.github.faroffcode.rhvdo" ]]; then
+            echo "::error::APK applicationId mismatch."
+            exit 1
+          fi
+
+          if [[ "$ACTUAL_VERSION_NAME" != "$VERSION_NAME" ]]; then
+            echo "::error::APK versionName mismatch."
+            exit 1
+          fi
+
+          if [[ "$ACTUAL_VERSION_CODE" != "$VERSION_CODE" ]]; then
+            echo "::error::APK versionCode mismatch."
+            exit 1
+          fi
 
       - name: Rename release artifacts
         shell: bash
