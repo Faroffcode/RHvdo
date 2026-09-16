@@ -1,6 +1,5 @@
 package io.github.faroffcode.rhvdo.settings.screens.about
 
-import android.content.ClipData
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.core.RepeatMode
@@ -9,6 +8,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,18 +26,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,33 +48,22 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.faroffcode.rhvdo.core.common.extensions.appIcon
 import io.github.faroffcode.rhvdo.core.ui.R
-import io.github.faroffcode.rhvdo.core.ui.components.ClickablePreferenceItem
-import io.github.faroffcode.rhvdo.core.ui.components.ListSectionTitle
 import io.github.faroffcode.rhvdo.core.ui.components.NextTopAppBar
 import io.github.faroffcode.rhvdo.core.ui.components.rememberTvListFocusRequester
 import io.github.faroffcode.rhvdo.core.ui.components.tvFocusDown
 import io.github.faroffcode.rhvdo.core.ui.components.tvListFocus
 import io.github.faroffcode.rhvdo.core.ui.designsystem.NextIcons
-import kotlinx.coroutines.launch
 
-private const val GITHUB_URL = "https://github.com/Faroffcode/RHvdo"
-private const val KOFI_URL = "https://ko-fi.com/anilbeesetti"
-private const val PAYPAL_URL = "https://paypal.me/AnilBeesetti"
-private const val UPI_ID = "anilbeesetti10@oksbi"
+private const val REPOSITORY_URL = "https://github.com/Faroffcode/RHvdo"
+private const val DEVELOPER_URL = "https://github.com/Faroffcode"
 
 @Composable
 fun AboutPreferencesScreen(viewModel: AboutPreferencesViewModel) {
@@ -85,27 +77,28 @@ private fun AboutPreferencesScreenContent(
     state: AboutPreferencesUiState,
     onAction: (AboutPreferencesAction) -> Unit,
 ) {
-    val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
-    val clipboard = LocalClipboard.current
-    val scope = rememberCoroutineScope()
-
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     val listFocusRequester = rememberTvListFocusRequester()
+
     Scaffold(
         topBar = {
             NextTopAppBar(
-                title = stringResource(id = R.string.about_name),
+                title = stringResource(R.string.about_name),
                 navigationIcon = {
-                    FilledTonalIconButton(onClick = { onAction(AboutPreferencesAction.NavigateUp) }, modifier = Modifier.tvFocusDown(listFocusRequester)) {
+                    FilledTonalIconButton(
+                        onClick = { onAction(AboutPreferencesAction.NavigateUp) },
+                        modifier = Modifier.tvFocusDown(listFocusRequester),
+                    ) {
                         Icon(
                             imageVector = NextIcons.ArrowBack,
-                            contentDescription = stringResource(id = R.string.navigate_up),
+                            contentDescription = stringResource(R.string.navigate_up),
                         )
                     }
                 },
             )
         },
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = MaterialTheme.colorScheme.surface,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -113,205 +106,298 @@ private fun AboutPreferencesScreenContent(
                 .verticalScroll(rememberScrollState())
                 .tvListFocus(listFocusRequester)
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
-                .padding(vertical = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            AboutApp(
-                appVersion = state.appVersion,
-                onGithubClick = {
-                    uriHandler.openUriOrShowToast(
-                        uri = GITHUB_URL,
-                        context = context,
-                    )
-                },
-                onLibrariesClick = { onAction(AboutPreferencesAction.OpenLibraries) },
-            )
-            ListSectionTitle(text = stringResource(id = R.string.donate))
-            Column(
-                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+            AboutHero(appVersion = state.appVersion)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                ClickablePreferenceItem(
-                    title = stringResource(R.string.kofi),
-                    description = stringResource(R.string.support_the_developer_on, stringResource(R.string.kofi)),
-                    icon = ImageVector.vectorResource(R.drawable.ic_kofi),
-                    onClick = {
-                        uriHandler.openUriOrShowToast(
-                            uri = KOFI_URL,
-                            context = context,
+                AboutActionButton(
+                    title = stringResource(R.string.libraries),
+                    modifier = Modifier.weight(1f),
+                    icon = { Icon(NextIcons.Style, contentDescription = null) },
+                    onClick = { onAction(AboutPreferencesAction.OpenLibraries) },
+                )
+                AboutActionButton(
+                    title = stringResource(R.string.github),
+                    modifier = Modifier.weight(1f),
+                    icon = {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_github),
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
                         )
                     },
-                    isFirstItem = true,
-                )
-                ClickablePreferenceItem(
-                    title = stringResource(R.string.paypal),
-                    description = stringResource(R.string.support_the_developer_on, stringResource(R.string.paypal)),
-                    icon = ImageVector.vectorResource(R.drawable.ic_paypal),
                     onClick = {
-                        uriHandler.openUriOrShowToast(
-                            uri = PAYPAL_URL,
-                            context = context,
-                        )
+                        openUriOrShowToast(REPOSITORY_URL, context, uriHandler)
                     },
-                )
-                ClickablePreferenceItem(
-                    title = stringResource(R.string.upi),
-                    description = UPI_ID,
-                    icon = ImageVector.vectorResource(R.drawable.ic_upi),
-                    onClick = {
-                        scope.launch {
-                            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("text", UPI_ID)))
-                            Toast.makeText(context, "copied to clipboard", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    isLastItem = true,
                 )
             }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                ),
+            ) {
+                Row(
+                    modifier = Modifier.padding(20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Surface(
+                        modifier = Modifier.size(56.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                    ) {
+                        BoxedIcon(icon = NextIcons.Info)
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.open_source),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.open_source_description),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(56.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 4.dp,
+                        ) {
+                            BoxedText(text = "F")
+                        }
+                        Column {
+                            Text(
+                                text = stringResource(R.string.developer).uppercase(),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(R.string.developer_name),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = stringResource(R.string.developer_handle),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            openUriOrShowToast(DEVELOPER_URL, context, uriHandler)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_github),
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.developer_github))
+                        Spacer(Modifier.weight(1f))
+                        Icon(NextIcons.ArrowForward, contentDescription = null)
+                    }
+                }
+            }
+
+            Text(
+                text = stringResource(R.string.made_with_faroff),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
 
 @Composable
-fun AboutApp(
-    appVersion: String,
-    modifier: Modifier = Modifier,
-    onGithubClick: () -> Unit,
-    onLibrariesClick: () -> Unit,
-) {
-    val context = LocalContext.current
+private fun AboutHero(appVersion: String) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val appIcon = remember { context.appIcon()?.asImageBitmap() }
-
-    val colorPrimary = MaterialTheme.colorScheme.primaryContainer
-    val colorTertiary = MaterialTheme.colorScheme.tertiaryContainer
-
+    val primary = MaterialTheme.colorScheme.primaryContainer
+    val secondary = MaterialTheme.colorScheme.tertiaryContainer
     val transition = rememberInfiniteTransition()
     val fraction by transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 5000),
+            animation = tween(5000),
             repeatMode = RepeatMode.Reverse,
         ),
     )
-    val cornerRadius = 24.dp
 
     Column(
-        modifier = modifier
-            .padding(
-                vertical = 16.dp,
-                horizontal = 8.dp,
-            )
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
             .drawWithCache {
-                val cx = size.width - size.width * fraction
-                val cy = size.height * fraction
-
-                val gradient = Brush.radialGradient(
-                    colors = listOf(colorPrimary, colorTertiary),
-                    center = Offset(cx, cy),
-                    radius = 800f,
+                val center = Offset(
+                    x = size.width * (1f - fraction),
+                    y = size.height * fraction,
                 )
-
+                val brush = Brush.radialGradient(
+                    colors = listOf(primary, secondary),
+                    center = center,
+                    radius = 900f,
+                )
                 onDrawBehind {
                     drawRoundRect(
-                        brush = gradient,
-                        cornerRadius = CornerRadius(
-                            cornerRadius.toPx(),
-                            cornerRadius.toPx(),
-                        ),
+                        brush = brush,
+                        cornerRadius = CornerRadius(28.dp.toPx()),
                     )
                 }
             }
-            .padding(all = 24.dp)
-            .fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
+            .padding(horizontal = 24.dp, vertical = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            appIcon?.let {
-                Image(
-                    bitmap = it,
-                    contentDescription = "App Logo",
-                    modifier = Modifier.size(48.dp).clip(CircleShape),
-                )
-            }
-            Column {
-                Text(
-                    text = stringResource(id = R.string.app_name),
-                    fontSize = 22.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = appVersion,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp,
-                    )
-                    Text(
-                        text = stringResource(R.string.by, stringResource(R.string.app_developer)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Button(
-                onClick = onLibrariesClick,
-                colors = ButtonDefaults.buttonColors(
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = .12f),
-                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = .12f),
-                ),
-                shape = RoundedCornerShape(8.dp),
+        appIcon?.let {
+            Image(
+                bitmap = it,
+                contentDescription = stringResource(R.string.app_name),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-                    .weight(1f),
-            ) {
-                Text(text = stringResource(R.string.libraries))
-            }
-            Button(
-                onClick = onGithubClick,
-                colors = ButtonDefaults.buttonColors(
-                    contentColor = MaterialTheme.colorScheme.onTertiary,
-                    disabledContentColor = MaterialTheme.colorScheme.onTertiary.copy(alpha = .12f),
-                    containerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.8f),
-                    disabledContainerColor = MaterialTheme.colorScheme.tertiary.copy(alpha = .12f),
-                ),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .height(52.dp),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_github),
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = stringResource(R.string.github))
-            }
+                    .size(112.dp)
+                    .clip(RoundedCornerShape(28.dp)),
+            )
         }
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            text = appVersion,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(R.string.developer_name).let { "by $it" },
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Surface(
+            modifier = Modifier
+                .padding(vertical = 4.dp)
+                .width(56.dp)
+                .height(4.dp),
+            shape = RoundedCornerShape(100),
+            color = MaterialTheme.colorScheme.primary,
+        ) {}
+        Text(
+            text = stringResource(R.string.about_tagline),
+            modifier = Modifier.padding(top = 6.dp),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
     }
 }
 
-internal fun UriHandler.openUriOrShowToast(uri: String, context: Context) {
+@Composable
+private fun AboutActionButton(
+    title: String,
+    modifier: Modifier = Modifier,
+    icon: @Composable () -> Unit,
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(58.dp),
+        shape = RoundedCornerShape(18.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+    ) {
+        icon()
+        Spacer(Modifier.width(10.dp))
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.weight(1f))
+        Icon(NextIcons.ArrowForward, contentDescription = null)
+    }
+}
+
+@Composable
+private fun BoxedIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(28.dp),
+        )
+    }
+}
+
+@Composable
+private fun BoxedText(text: String) {
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+private fun openUriOrShowToast(
+    uri: String,
+    context: Context,
+    uriHandler: androidx.compose.ui.platform.UriHandler,
+) {
     try {
-        openUri(uri = uri)
-    } catch (e: Exception) {
-        Toast.makeText(context, context.getString(R.string.error_opening_link), Toast.LENGTH_SHORT).show()
+        uriHandler.openUri(uri)
+    } catch (_: Exception) {
+        Toast.makeText(
+            context,
+            context.getString(R.string.error_opening_link),
+            Toast.LENGTH_SHORT,
+        ).show()
     }
 }
