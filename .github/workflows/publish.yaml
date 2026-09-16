@@ -26,8 +26,17 @@ jobs:
           set -euo pipefail
           git fetch --tags --force
 
-          LATEST_TAG="$(git tag --list | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
-          RELEASE_COUNT="$(git tag --list | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | wc -l | tr -d ' ')"
+          mapfile -t RELEASE_TAGS < <(
+            git tag --list |
+              awk '/^v[0-9]+\.[0-9]+\.[0-9]+$/' |
+              sort -V
+          )
+
+          RELEASE_COUNT="${#RELEASE_TAGS[@]}"
+          LATEST_TAG=""
+          if (( RELEASE_COUNT > 0 )); then
+            LATEST_TAG="${RELEASE_TAGS[$((RELEASE_COUNT - 1))]}"
+          fi
 
           if [[ -z "$LATEST_TAG" ]]; then
             VERSION_NAME="1.0.0"
