@@ -140,14 +140,24 @@ jobs:
           set -uo pipefail
           APK="$VERIFY_APK"
 
-          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
-          APKANALYZER="$BUILD_TOOLS/apkanalyzer"
-          if [[ ! -x "$APKANALYZER" ]]; then
-            echo "::error::apkanalyzer not found: $APKANALYZER"
+          # apkanalyzer is part of Android SDK Command-Line Tools, not build-tools.
+          APKANALYZER=""
+          if command -v apkanalyzer >/dev/null 2>&1; then
+            APKANALYZER="$(command -v apkanalyzer)"
+          elif [[ -x "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" ]]; then
+            APKANALYZER="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
+          else
+            APKANALYZER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name apkanalyzer -perm -111 2>/dev/null | sort -V | tail -n 1 || true)"
+          fi
+
+          if [[ -z "$APKANALYZER" || ! -x "$APKANALYZER" ]]; then
+            echo "::error::apkanalyzer not found in PATH or Android SDK command-line tools."
+            echo "ANDROID_HOME=$ANDROID_HOME"
+            find "$ANDROID_HOME/cmdline-tools" -maxdepth 4 -type f -name 'apkanalyzer' -print 2>/dev/null || true
             exit 1
           fi
 
-          echo "Build-tools: $BUILD_TOOLS"
+          echo "apkanalyzer: $APKANALYZER"
           echo "APK: $APK"
 
           set +e
