@@ -137,64 +137,45 @@ jobs:
       - name: Verify APK identity and version
         shell: bash
         run: |
-          set -uo pipefail
+          set -euo pipefail
           APK="$VERIFY_APK"
 
-          # apkanalyzer is part of Android SDK Command-Line Tools, not build-tools.
-          APKANALYZER=""
-          if command -v apkanalyzer >/dev/null 2>&1; then
-            APKANALYZER="$(command -v apkanalyzer)"
-          elif [[ -x "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" ]]; then
-            APKANALYZER="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
-          else
-            APKANALYZER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name apkanalyzer -perm -111 2>/dev/null | sort -V | tail -n 1 || true)"
+          # Use Android SDK Build Tools instead of apkanalyzer.
+          # GitHub-hosted runners provide aapt/aapt2 with the installed build tools.
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          AAPT="$BUILD_TOOLS/aapt"
+          if [[ ! -x "$AAPT" ]]; then
+            AAPT="$BUILD_TOOLS/aapt2"
           fi
 
-          if [[ -z "$APKANALYZER" || ! -x "$APKANALYZER" ]]; then
-            echo "::error::apkanalyzer not found in PATH or Android SDK command-line tools."
-            echo "ANDROID_HOME=$ANDROID_HOME"
-            find "$ANDROID_HOME/cmdline-tools" -maxdepth 4 -type f -name 'apkanalyzer' -print 2>/dev/null || true
+          if [[ ! -x "$AAPT" ]]; then
+            echo "::error::Neither aapt nor aapt2 was found in $BUILD_TOOLS"
+            find "$ANDROID_HOME/build-tools" -maxdepth 2 -type f \( -name aapt -o -name aapt2 \) -print || true
             exit 1
           fi
 
-          echo "apkanalyzer: $APKANALYZER"
+          echo "Build tools: $BUILD_TOOLS"
+          echo "APK inspection tool: $AAPT"
           echo "APK: $APK"
 
-          set +e
-          APPLICATION_ID_OUTPUT=$("$APKANALYZER" manifest application-id "$APK" 2>&1)
-          APPLICATION_ID_STATUS=$?
-          VERSION_NAME_OUTPUT=$("$APKANALYZER" manifest version-name "$APK" 2>&1)
-          VERSION_NAME_STATUS=$?
-          VERSION_CODE_OUTPUT=$("$APKANALYZER" manifest version-code "$APK" 2>&1)
-          VERSION_CODE_STATUS=$?
-          set -e
+          BADGING="$($AAPT dump badging "$APK")"
+          PACKAGE_LINE="$(printf '%s\n' "$BADGING" | awk '/^package:/{print; exit}')"
 
-          ACTUAL_APPLICATION_ID=$(printf '%s\n' "$APPLICATION_ID_OUTPUT" | tr -d '\r' | xargs)
-          ACTUAL_VERSION_NAME=$(printf '%s\n' "$VERSION_NAME_OUTPUT" | tr -d '\r' | xargs)
-          ACTUAL_VERSION_CODE=$(printf '%s\n' "$VERSION_CODE_OUTPUT" | tr -d '\r' | xargs)
+          if [[ -z "$PACKAGE_LINE" ]]; then
+            echo "::error::Could not read package metadata from the release APK."
+            exit 1
+          fi
 
-          echo "application-id command exit: $APPLICATION_ID_STATUS"
-          echo "version-name command exit: $VERSION_NAME_STATUS"
-          echo "version-code command exit: $VERSION_CODE_STATUS"
+          ACTUAL_APPLICATION_ID="$(printf '%s\n' "$PACKAGE_LINE" | sed -n "s/.*name='\([^']*\)'.*/\1/p")"
+          ACTUAL_VERSION_CODE="$(printf '%s\n' "$PACKAGE_LINE" | sed -n "s/.*versionCode='\([^']*\)'.*/\1/p")"
+          ACTUAL_VERSION_NAME="$(printf '%s\n' "$PACKAGE_LINE" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")"
+
           echo "APK applicationId: $ACTUAL_APPLICATION_ID"
           echo "Expected applicationId: io.github.faroffcode.rhvdo"
           echo "APK versionName: $ACTUAL_VERSION_NAME"
           echo "Expected versionName: $VERSION_NAME"
           echo "APK versionCode: $ACTUAL_VERSION_CODE"
           echo "Expected versionCode: $VERSION_CODE"
-
-          if [[ $APPLICATION_ID_STATUS -ne 0 ]]; then
-            echo "::error::apkanalyzer failed while reading applicationId: $APPLICATION_ID_OUTPUT"
-            exit 1
-          fi
-          if [[ $VERSION_NAME_STATUS -ne 0 ]]; then
-            echo "::error::apkanalyzer failed while reading versionName: $VERSION_NAME_OUTPUT"
-            exit 1
-          fi
-          if [[ $VERSION_CODE_STATUS -ne 0 ]]; then
-            echo "::error::apkanalyzer failed while reading versionCode: $VERSION_CODE_OUTPUT"
-            exit 1
-          fi
 
           if [[ "$ACTUAL_APPLICATION_ID" != "io.github.faroffcode.rhvdo" ]]; then
             echo "::error::APK applicationId mismatch."
@@ -211,16 +192,20 @@ jobs:
             exit 1
           fi
 
-      - name: Rename release artifacts
+          echo "APK verification passed."
+
+      - name: Prepare release artifacts
         shell: bash
         run: |
           set -euo pipefail
           OUT="app/build/outputs/apk/release"
+          RELEASE_DIR="release-assets"
+          mkdir -p "$RELEASE_DIR"
+
           shopt -s nullglob
           APKS=("$OUT"/*.apk)
-
           if (( ${#APKS[@]} == 0 )); then
-            echo "::error::No APK files found for artifact packaging."
+            echo "::error::No APK files found for release packaging."
             exit 1
           fi
 
@@ -232,9 +217,9 @@ jobs:
               LABEL="universal"
             fi
 
-            DEST="$OUT/RHvdo-v${VERSION_NAME}-${LABEL}.apk"
-            echo "Renaming $SRC -> $DEST"
-            mv "$SRC" "$DEST"
+            DEST="$RELEASE_DIR/RHvdo-v${VERSION_NAME}-${LABEL}.apk"
+            echo "Copying $SRC -> $DEST"
+            cp "$SRC" "$DEST"
           done
 
           AAB="app/build/outputs/bundle/release/app-release.aab"
@@ -244,33 +229,16 @@ jobs:
             exit 1
           fi
 
-          mv "$AAB" "app/build/outputs/bundle/release/RHvdo-v${VERSION_NAME}.aab"
+          cp "$AAB" "$RELEASE_DIR/RHvdo-v${VERSION_NAME}.aab"
 
-          APKS=("$OUT"/RHvdo-v"${VERSION_NAME}"-*.apk)
-          if (( ${#APKS[@]} == 0 )); then
-            echo "::error::No renamed APK files were found."
-            exit 1
-          fi
-
-          sha256sum "${APKS[@]}" > "$OUT/SHA256SUMS"
-          sha256sum "app/build/outputs/bundle/release/RHvdo-v${VERSION_NAME}.aab" >> "$OUT/SHA256SUMS"
-
-      - name: Create Git tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$RELEASE_TAG" -m "RHvdo $RELEASE_TAG"
-          git push origin "$RELEASE_TAG"
+          (cd "$RELEASE_DIR" && sha256sum * > SHA256SUMS)
+          cat "$RELEASE_DIR/SHA256SUMS"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: "${{ env.RELEASE_TAG }}"
+          target_commitish: "${{ github.sha }}"
           name: "RHvdo ${{ env.RELEASE_TAG }}"
           generate_release_notes: true
-          files: |
-            app/build/outputs/apk/release/RHvdo-v${{ env.VERSION_NAME }}-*.apk
-            app/build/outputs/apk/release/SHA256SUMS
-            app/build/outputs/bundle/release/RHvdo-v${{ env.VERSION_NAME }}.aab
+          files: release-assets/*
