@@ -2,56 +2,60 @@ name: Release RHvdo
 
 on:
   workflow_dispatch:
-    inputs:
-      version_name:
-        description: "Release version (for example 1.0.0)"
-        required: true
-        type: string
-      version_code:
-        description: "Android versionCode (must be greater than the previous release)"
-        required: true
-        type: string
 
 permissions:
   contents: write
+
+concurrency:
+  group: rhvdo-release
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Validate release version
-        shell: bash
-        run: |
-          set -euo pipefail
-          VERSION="${{ inputs.version_name }}"
-          VERSION_CODE="${{ inputs.version_code }}"
-
-          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::version_name must be SemVer in X.Y.Z form."
-            exit 1
-          fi
-
-          if [[ ! "$VERSION_CODE" =~ ^[0-9]+$ ]] || (( VERSION_CODE < 1 )); then
-            echo "::error::version_code must be a positive integer."
-            exit 1
-          fi
-
-          echo "VERSION_NAME=$VERSION" >> "$GITHUB_ENV"
-          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
-
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
+      - name: Calculate next release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+
+          LATEST_TAG="$(git tag --list | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)"
+          RELEASE_COUNT="$(git tag --list | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | wc -l | tr -d ' ')"
+
+          if [[ -z "$LATEST_TAG" ]]; then
+            VERSION_NAME="1.0.0"
+            VERSION_CODE=1
+          else
+            VERSION_NAME="${LATEST_TAG#v}"
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NAME"
+            PATCH=$((PATCH + 1))
+            VERSION_NAME="${MAJOR}.${MINOR}.${PATCH}"
+            VERSION_CODE=$((RELEASE_COUNT + 1))
+          fi
+
+          RELEASE_TAG="v${VERSION_NAME}"
+
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+
+          echo "Next release: $RELEASE_TAG"
+          echo "versionName: $VERSION_NAME"
+          echo "versionCode: $VERSION_CODE"
+
       - name: Ensure release tag does not already exist
         shell: bash
         run: |
           set -euo pipefail
-          TAG="v${VERSION_NAME}"
-          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "::error::Tag $TAG already exists."
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $RELEASE_TAG already exists."
             exit 1
           fi
 
@@ -94,15 +98,38 @@ jobs:
             -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
             -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
 
+      - name: Locate release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="app/build/outputs/apk/release"
+
+          echo "APK outputs:"
+          find "$OUT" -maxdepth 1 -type f -name '*.apk' -print | sort || true
+
+          VERIFY_APK=""
+          if [[ -f "$OUT/app-universal-release.apk" ]]; then
+            VERIFY_APK="$OUT/app-universal-release.apk"
+          elif [[ -f "$OUT/app-release.apk" ]]; then
+            VERIFY_APK="$OUT/app-release.apk"
+          else
+            VERIFY_APK="$(find "$OUT" -maxdepth 1 -type f -name '*.apk' | sort | head -n 1 || true)"
+          fi
+
+          if [[ -z "$VERIFY_APK" || ! -f "$VERIFY_APK" ]]; then
+            echo "::error::No release APK was produced. Full APK output directory:"
+            find app/build/outputs/apk -maxdepth 3 -type f -print || true
+            exit 1
+          fi
+
+          echo "VERIFY_APK=$VERIFY_APK" >> "$GITHUB_ENV"
+          echo "Selected APK for verification: $VERIFY_APK"
+
       - name: Verify APK identity and version
         shell: bash
         run: |
           set -uo pipefail
-          APK="app/build/outputs/apk/release/app-universal-release.apk"
-          if [[ ! -f "$APK" ]]; then
-            echo "::error::Expected universal APK was not produced: $APK"
-            exit 1
-          fi
+          APK="$VERIFY_APK"
 
           BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           APKANALYZER="$BUILD_TOOLS/apkanalyzer"
@@ -170,21 +197,43 @@ jobs:
         run: |
           set -euo pipefail
           OUT="app/build/outputs/apk/release"
+          shopt -s nullglob
+          APKS=("$OUT"/*.apk)
 
-          for ABI in arm64-v8a armeabi-v7a universal x86 x86_64; do
-            SRC="$OUT/app-${ABI}-release.apk"
-            if [[ -f "$SRC" ]]; then
-              mv "$SRC" "$OUT/RHvdo-v${VERSION_NAME}-${ABI}.apk"
+          if (( ${#APKS[@]} == 0 )); then
+            echo "::error::No APK files found for artifact packaging."
+            exit 1
+          fi
+
+          for SRC in "${APKS[@]}"; do
+            BASE="$(basename "$SRC" .apk)"
+            LABEL="${BASE#app-}"
+            LABEL="${LABEL%-release}"
+            if [[ "$LABEL" == "release" || -z "$LABEL" ]]; then
+              LABEL="universal"
             fi
+
+            DEST="$OUT/RHvdo-v${VERSION_NAME}-${LABEL}.apk"
+            echo "Renaming $SRC -> $DEST"
+            mv "$SRC" "$DEST"
           done
 
-          mv "app/build/outputs/bundle/release/app-release.aab" \
-             "app/build/outputs/bundle/release/RHvdo-v${VERSION_NAME}.aab"
+          AAB="app/build/outputs/bundle/release/app-release.aab"
+          if [[ ! -f "$AAB" ]]; then
+            echo "::error::Expected release AAB was not produced: $AAB"
+            find app/build/outputs/bundle -maxdepth 3 -type f -print || true
+            exit 1
+          fi
 
-          cd "$OUT"
-          sha256sum RHvdo-v"${VERSION_NAME}"-*.apk > SHA256SUMS
-          cd -
+          mv "$AAB" "app/build/outputs/bundle/release/RHvdo-v${VERSION_NAME}.aab"
 
+          APKS=("$OUT"/RHvdo-v"${VERSION_NAME}"-*.apk)
+          if (( ${#APKS[@]} == 0 )); then
+            echo "::error::No renamed APK files were found."
+            exit 1
+          fi
+
+          sha256sum "${APKS[@]}" > "$OUT/SHA256SUMS"
           sha256sum "app/build/outputs/bundle/release/RHvdo-v${VERSION_NAME}.aab" >> "$OUT/SHA256SUMS"
 
       - name: Create Git tag
@@ -193,14 +242,14 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "v${VERSION_NAME}" -m "RHvdo v${VERSION_NAME}"
-          git push origin "v${VERSION_NAME}"
+          git tag -a "$RELEASE_TAG" -m "RHvdo $RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: "v${{ env.VERSION_NAME }}"
-          name: "RHvdo v${{ env.VERSION_NAME }}"
+          tag_name: "${{ env.RELEASE_TAG }}"
+          name: "RHvdo ${{ env.RELEASE_TAG }}"
           generate_release_notes: true
           files: |
             app/build/outputs/apk/release/RHvdo-v${{ env.VERSION_NAME }}-*.apk
