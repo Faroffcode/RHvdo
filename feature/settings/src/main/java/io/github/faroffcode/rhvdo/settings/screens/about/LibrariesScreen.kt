@@ -1,5 +1,6 @@
 package io.github.faroffcode.rhvdo.settings.screens.about
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -113,8 +114,16 @@ private fun LibrariesScreenContent(
                     isFirstItem = index == 0,
                     isLastItem = index == state.libraries.lastIndex,
                     onClick = {
-                        library.website?.takeIf { it.isNotBlank() }?.let {
-                            uriHandler.openUriOrShowToast(uri = it, context = context)
+                        library.website?.takeIf { it.isNotBlank() }?.let { url ->
+                            try {
+                                uriHandler.openUri(url)
+                            } catch (_: Exception) {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.error_opening_link),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
                         }
                     },
                 )
