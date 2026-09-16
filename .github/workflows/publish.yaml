@@ -97,23 +97,58 @@ jobs:
       - name: Verify APK identity and version
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
           APK="app/build/outputs/apk/release/app-universal-release.apk"
-          test -f "$APK"
+          if [[ ! -f "$APK" ]]; then
+            echo "::error::Expected universal APK was not produced: $APK"
+            exit 1
+          fi
 
           BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           APKANALYZER="$BUILD_TOOLS/apkanalyzer"
+          if [[ ! -x "$APKANALYZER" ]]; then
+            echo "::error::apkanalyzer not found: $APKANALYZER"
+            exit 1
+          fi
 
-          ACTUAL_APPLICATION_ID="$("$APKANALYZER" manifest application-id "$APK" | tr -d '\r' | xargs)"
-          ACTUAL_VERSION_NAME="$("$APKANALYZER" manifest version-name "$APK" | tr -d '\r' | xargs)"
-          ACTUAL_VERSION_CODE="$("$APKANALYZER" manifest version-code "$APK" | tr -d '\r' | xargs)"
+          echo "Build-tools: $BUILD_TOOLS"
+          echo "APK: $APK"
 
+          set +e
+          APPLICATION_ID_OUTPUT=$("$APKANALYZER" manifest application-id "$APK" 2>&1)
+          APPLICATION_ID_STATUS=$?
+          VERSION_NAME_OUTPUT=$("$APKANALYZER" manifest version-name "$APK" 2>&1)
+          VERSION_NAME_STATUS=$?
+          VERSION_CODE_OUTPUT=$("$APKANALYZER" manifest version-code "$APK" 2>&1)
+          VERSION_CODE_STATUS=$?
+          set -e
+
+          ACTUAL_APPLICATION_ID=$(printf '%s\n' "$APPLICATION_ID_OUTPUT" | tr -d '\r' | xargs)
+          ACTUAL_VERSION_NAME=$(printf '%s\n' "$VERSION_NAME_OUTPUT" | tr -d '\r' | xargs)
+          ACTUAL_VERSION_CODE=$(printf '%s\n' "$VERSION_CODE_OUTPUT" | tr -d '\r' | xargs)
+
+          echo "application-id command exit: $APPLICATION_ID_STATUS"
+          echo "version-name command exit: $VERSION_NAME_STATUS"
+          echo "version-code command exit: $VERSION_CODE_STATUS"
           echo "APK applicationId: $ACTUAL_APPLICATION_ID"
           echo "Expected applicationId: io.github.faroffcode.rhvdo"
           echo "APK versionName: $ACTUAL_VERSION_NAME"
           echo "Expected versionName: $VERSION_NAME"
           echo "APK versionCode: $ACTUAL_VERSION_CODE"
           echo "Expected versionCode: $VERSION_CODE"
+
+          if [[ $APPLICATION_ID_STATUS -ne 0 ]]; then
+            echo "::error::apkanalyzer failed while reading applicationId: $APPLICATION_ID_OUTPUT"
+            exit 1
+          fi
+          if [[ $VERSION_NAME_STATUS -ne 0 ]]; then
+            echo "::error::apkanalyzer failed while reading versionName: $VERSION_NAME_OUTPUT"
+            exit 1
+          fi
+          if [[ $VERSION_CODE_STATUS -ne 0 ]]; then
+            echo "::error::apkanalyzer failed while reading versionCode: $VERSION_CODE_OUTPUT"
+            exit 1
+          fi
 
           if [[ "$ACTUAL_APPLICATION_ID" != "io.github.faroffcode.rhvdo" ]]; then
             echo "::error::APK applicationId mismatch."
