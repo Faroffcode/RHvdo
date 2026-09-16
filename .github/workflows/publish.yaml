@@ -20,6 +20,20 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Read application ID from Gradle
+        shell: bash
+        run: |
+          set -euo pipefail
+          APPLICATION_ID="$(sed -n 's/^[[:space:]]*applicationId[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n 1)"
+
+          if [[ -z "$APPLICATION_ID" ]]; then
+            echo "::error::Could not determine applicationId from app/build.gradle.kts"
+            exit 1
+          fi
+
+          echo "APPLICATION_ID=$APPLICATION_ID" >> "$GITHUB_ENV"
+          echo "Configured applicationId: $APPLICATION_ID"
+
       - name: Calculate next release version
         shell: bash
         run: |
@@ -140,8 +154,6 @@ jobs:
           set -euo pipefail
           APK="$VERIFY_APK"
 
-          # Use Android SDK Build Tools instead of apkanalyzer.
-          # GitHub-hosted runners provide aapt/aapt2 with the installed build tools.
           BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           AAPT="$BUILD_TOOLS/aapt"
           if [[ ! -x "$AAPT" ]]; then
@@ -150,13 +162,8 @@ jobs:
 
           if [[ ! -x "$AAPT" ]]; then
             echo "::error::Neither aapt nor aapt2 was found in $BUILD_TOOLS"
-            find "$ANDROID_HOME/build-tools" -maxdepth 2 -type f \( -name aapt -o -name aapt2 \) -print || true
             exit 1
           fi
-
-          echo "Build tools: $BUILD_TOOLS"
-          echo "APK inspection tool: $AAPT"
-          echo "APK: $APK"
 
           BADGING="$($AAPT dump badging "$APK")"
           PACKAGE_LINE="$(printf '%s\n' "$BADGING" | awk '/^package:/{print; exit}')"
@@ -171,14 +178,14 @@ jobs:
           ACTUAL_VERSION_NAME="$(printf '%s\n' "$PACKAGE_LINE" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")"
 
           echo "APK applicationId: $ACTUAL_APPLICATION_ID"
-          echo "Expected applicationId: io.github.faroffcode.rhvdo"
+          echo "Configured applicationId: $APPLICATION_ID"
           echo "APK versionName: $ACTUAL_VERSION_NAME"
           echo "Expected versionName: $VERSION_NAME"
           echo "APK versionCode: $ACTUAL_VERSION_CODE"
           echo "Expected versionCode: $VERSION_CODE"
 
-          if [[ "$ACTUAL_APPLICATION_ID" != "io.github.faroffcode.rhvdo" ]]; then
-            echo "::error::APK applicationId mismatch."
+          if [[ "$ACTUAL_APPLICATION_ID" != "$APPLICATION_ID" ]]; then
+            echo "::error::APK applicationId does not match app/build.gradle.kts"
             exit 1
           fi
 
@@ -217,9 +224,7 @@ jobs:
               LABEL="universal"
             fi
 
-            DEST="$RELEASE_DIR/RHvdo-v${VERSION_NAME}-${LABEL}.apk"
-            echo "Copying $SRC -> $DEST"
-            cp "$SRC" "$DEST"
+            cp "$SRC" "$RELEASE_DIR/RHvdo-v${VERSION_NAME}-${LABEL}.apk"
           done
 
           AAB="app/build/outputs/bundle/release/app-release.aab"
@@ -230,7 +235,6 @@ jobs:
           fi
 
           cp "$AAB" "$RELEASE_DIR/RHvdo-v${VERSION_NAME}.aab"
-
           (cd "$RELEASE_DIR" && sha256sum * > SHA256SUMS)
           cat "$RELEASE_DIR/SHA256SUMS"
 
