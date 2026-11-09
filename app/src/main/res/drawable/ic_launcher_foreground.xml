@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
-    android:src="@drawable/rhvdo_launcher_foreground"
-    android:gravity="center" />
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#20E85A" android:strokeWidth="7" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M20,70 C17,51 37,30 62,29 C84,28 96,43 91,60 C87,77 65,86 43,82"/>
+    <path android:fillColor="#20E85A" android:pathData="M57,26h6v6h-6z M73,29h6v6h-6z M86,38h6v6h-6z M25,57h6v6h-6z M31,74h6v6h-6z M47,82h6v6h-6z M66,78h6v6h-6z M82,66h6v6h-6z"/>
+    <path android:fillColor="#00C853" android:pathData="M25,22 C25,17 30,14 35,17 L77,42 C83,46 83,53 77,57 L35,82 C30,85 25,82 25,76 Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M43,35 C42,34 40,35 40,38 L40,66 C40,69 42,70 45,68 L68,55 C71,53 71,50 68,48 Z"/>
+</vector>
