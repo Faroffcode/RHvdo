@@ -1,7 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="@android:color/transparent" android:strokeColor="#20E85A" android:strokeWidth="7" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M20,70 C17,51 37,30 62,29 C84,28 96,43 91,60 C87,77 65,86 43,82"/>
-    <path android:fillColor="#20E85A" android:pathData="M57,26h6v6h-6z M73,29h6v6h-6z M86,38h6v6h-6z M25,57h6v6h-6z M31,74h6v6h-6z M47,82h6v6h-6z M66,78h6v6h-6z M82,66h6v6h-6z"/>
-    <path android:fillColor="#00C853" android:pathData="M25,22 C25,17 30,14 35,17 L77,42 C83,46 83,53 77,57 L35,82 C30,85 25,82 25,76 Z"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M43,35 C42,34 40,35 40,38 L40,66 C40,69 42,70 45,68 L68,55 C71,53 71,50 68,48 Z"/>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Simple film frame, kept inside the adaptive-icon safe zone -->
+    <path
+        android:fillColor="#00D65A"
+        android:pathData="M29,23
+            C25.7,23 23,25.7 23,29
+            L23,79
+            C23,82.3 25.7,85 29,85
+            L79,85
+            C82.3,85 85,82.3 85,79
+            L85,29
+            C85,25.7 82.3,23 79,23 Z" />
+
+    <!-- Film perforations -->
+    <path
+        android:fillColor="#07110B"
+        android:pathData="M31,28h7v5h-7z M46,28h7v5h-7z M61,28h7v5h-7z M76,28h4v5h-4z
+            M31,75h7v5h-7z M46,75h7v5h-7z M61,75h7v5h-7z M76,75h4v5h-4z" />
+
+    <!-- Centered play symbol -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M43,39
+            C43,36.8 45.4,35.5 47.3,36.6
+            L69,49.1
+            C71,50.3 71,53.2 69,54.4
+            L47.3,66.9
+            C45.4,68 43,66.7 43,64.5 Z" />
 </vector>
